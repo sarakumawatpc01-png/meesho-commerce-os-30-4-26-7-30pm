@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+  <!-- M letterform for Meesho Commerce OS -->
+  <text x="5" y="23" font-family="Arial,sans-serif" font-weight="900" font-size="20" fill="white">M</text>
+  <!-- Lightning bolt accent -->
+  <path d="M22 6 L18 14 L21 14 L17 26 L26 13 L22 13 Z" fill="#fbbf24" opacity="0.9"/>
+</svg>
