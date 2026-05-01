@@ -175,11 +175,13 @@ router.post('/initiate', checkoutLimiter, optionalAuth, async (req: Request, res
   );
 
   const razorpayAmount = Number(razorpayOrder.amount);
-  const razorpayTotal = Number.isFinite(razorpayAmount) ? razorpayAmount / 100 : order.total;
+  const orderTotalRupees = Number(order.total);
+  const razorpayTotal = Number.isFinite(razorpayAmount) ? razorpayAmount / 100 : orderTotalRupees;
   if (!Number.isFinite(razorpayAmount)) {
-    logger.warn('Razorpay order amount was not numeric; falling back to order total', {
+    logger.warn('Razorpay order amount was not numeric; falling back to order total in rupees', {
       orderId: order.id,
       razorpayAmount: razorpayOrder.amount,
+      orderTotalRupees,
     });
   }
 
