@@ -18,6 +18,10 @@ const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com
 
 type AdminPasswordRow = { password: string };
 
+function normalizeEmailAddress(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 async function verifyPassword(password: string, passwordHash?: string | null): Promise<boolean> {
   if (!passwordHash) return false;
   try {
@@ -68,7 +72,7 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     emailOtp: z.string().optional(),
   }).parse(req.body);
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmailAddress(email);
   const admin = await queryOne<any>(
     `SELECT * FROM engine.admin_users WHERE email = $1 AND is_active = true`,
     [normalizedEmail]
@@ -170,7 +174,8 @@ router.post('/site-login', adminLoginLimiter, async (req: any, res: Response) =>
   if (!site.site_admin_email || !site.site_admin_password_hash) {
     throw createError(500, 'Site admin credentials not configured. Contact superadmin.');
   }
-  if (site.site_admin_email.toLowerCase() !== email.toLowerCase()) {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (site.site_admin_email.toLowerCase() !== normalizedEmail) {
     throw createError(401, 'Invalid email or password');
   }
   if (!(await verifyPassword(password, site.site_admin_password_hash))) {
