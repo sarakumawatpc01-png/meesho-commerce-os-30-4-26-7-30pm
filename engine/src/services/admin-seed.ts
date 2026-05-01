@@ -7,13 +7,24 @@ const DEFAULT_PASSWORD = 'Admin@123';
 
 async function passwordMatches(hash: string | null | undefined, password: string): Promise<boolean> {
   if (!hash) return false;
-  return bcrypt.compare(password, hash);
+  try {
+    return await bcrypt.compare(password, hash);
+  } catch (err) {
+    logger.warn('Failed to compare admin password hash.', err);
+    return false;
+  }
 }
 
 export async function ensureSuperAdminFromEnv(): Promise<void> {
   const rawEmail = process.env.SUPER_ADMIN_EMAIL?.trim();
   const desiredEmail = (rawEmail || DEFAULT_EMAIL).toLowerCase();
-  const desiredPassword = process.env.SUPER_ADMIN_PASSWORD || DEFAULT_PASSWORD;
+  const rawPassword = process.env.SUPER_ADMIN_PASSWORD;
+  const desiredPassword = rawPassword || DEFAULT_PASSWORD;
+
+  if (rawEmail && !rawPassword && rawEmail.toLowerCase() !== DEFAULT_EMAIL) {
+    logger.warn('SUPER_ADMIN_EMAIL set without SUPER_ADMIN_PASSWORD; skipping env override.');
+    return;
+  }
 
   const existing = await queryOne<{ id: string; password: string }>(
     `SELECT id, password FROM engine.admin_users WHERE email = $1`,
@@ -35,23 +46,25 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
     return;
   }
 
-  const legacyDefault = await queryOne<{ id: string; password: string }>(
-    `SELECT id, password FROM engine.admin_users WHERE email = $1`,
-    [DEFAULT_EMAIL]
-  );
-  if (legacyDefault && desiredEmail !== DEFAULT_EMAIL) {
-    // Only migrate the legacy default account when it still uses the default password.
-    const legacyMatchesDefault = await passwordMatches(legacyDefault.password, DEFAULT_PASSWORD);
-    if (legacyMatchesDefault) {
-      const passwordHash = await bcrypt.hash(desiredPassword, 12);
-      await query(
-        `UPDATE engine.admin_users
-         SET email = $1, password = $2, updated_at = NOW()
-         WHERE id = $3`,
-        [desiredEmail, passwordHash, legacyDefault.id]
-      );
-      logger.info('Default super admin updated to use environment credentials.');
-      return;
+  if (desiredEmail !== DEFAULT_EMAIL) {
+    const legacyDefault = await queryOne<{ id: string; password: string }>(
+      `SELECT id, password FROM engine.admin_users WHERE email = $1`,
+      [DEFAULT_EMAIL]
+    );
+    if (legacyDefault) {
+      // Only migrate the legacy default account when it still uses the default password.
+      const legacyMatchesDefault = await passwordMatches(legacyDefault.password, DEFAULT_PASSWORD);
+      if (legacyMatchesDefault) {
+        const passwordHash = await bcrypt.hash(desiredPassword, 12);
+        await query(
+          `UPDATE engine.admin_users
+           SET email = $1, password = $2, updated_at = NOW()
+           WHERE id = $3`,
+          [desiredEmail, passwordHash, legacyDefault.id]
+        );
+        logger.info('Default super admin updated to use environment credentials.');
+        return;
+      }
     }
   }
 
