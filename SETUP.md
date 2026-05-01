@@ -24,8 +24,9 @@ apt install docker-compose-plugin -y
 git clone <your-repo> /opt/meesho-commerce-os
 cd /opt/meesho-commerce-os
 
-# Fill environment variables
-# .env ships with placeholders — replace ALL values before proceeding
+# Copy and fill environment variables
+cp .env.example .env
+# Set ENV_FILE=.env when running docker compose to use your filled file
 nano .env
 ```
 
@@ -54,6 +55,9 @@ Edit `.env` and fill:
 
 ```bash
 cd /opt/meesho-commerce-os
+
+# Use the filled .env file for compose
+export ENV_FILE=.env
 
 # Build and start all services
 docker compose up -d --build
@@ -234,7 +238,7 @@ du -sh /var/lib/docker/volumes/
 - [ ] Database only accessible from internal network
 - [ ] Regular DB backups configured (cron)
 - [ ] Sentry DSN added for error monitoring
-- [ ] `.env` contains production secrets only on the server (placeholders in repo)
+- [ ] `.env` stays out of git (only .env.example is tracked)
 
 ---
 

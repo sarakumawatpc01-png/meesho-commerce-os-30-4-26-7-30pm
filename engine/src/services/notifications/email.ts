@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { Site } from '../../types';
 import { logger } from '../../utils/logger';
 
+// resendClient: undefined = not initialized, null = disabled (missing key), Resend = ready
 let resendClient: Resend | null | undefined;
 let missingResendKeyLogged = false;
 let missingEmailFromLogged = false;

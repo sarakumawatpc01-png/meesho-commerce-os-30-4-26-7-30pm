@@ -5,6 +5,7 @@ import { logger } from '../utils/logger';
 import { Resend } from 'resend';
 import dayjs from 'dayjs';
 
+// resendClient: undefined = not initialized, null = disabled (missing key), Resend = ready
 let resendClient: Resend | null | undefined;
 let missingResendKeyLogged = false;
 let missingEmailFromLogged = false;

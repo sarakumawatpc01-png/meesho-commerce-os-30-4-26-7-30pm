@@ -111,10 +111,10 @@ ENGINE_SECRET=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)
 ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 # Substitute into .env (placeholders only)
-sed -i "s|CHANGE_ME_STRONG_PASSWORD_HERE|${PG_PASS}|g" .env
-sed -i "s|CHANGE_ME_REDIS_PASSWORD|${REDIS_PASS}|g" .env
-sed -i "s|CHANGE_ME_64_CHAR_RANDOM_SECRET_FOR_JWT_AND_ENCRYPTION|${ENGINE_SECRET}|g" .env
-sed -i "s|CHANGE_ME_32_CHAR_ENCRYPTION_KEY_|${ENC_KEY}|g" .env
+sed -i "s|REPLACE_WITH_SECURE_POSTGRES_PASSWORD|${PG_PASS}|g" .env
+sed -i "s|REPLACE_WITH_SECURE_REDIS_PASSWORD|${REDIS_PASS}|g" .env
+sed -i "s|REPLACE_WITH_64_CHAR_JWT_SECRET|${ENGINE_SECRET}|g" .env
+sed -i "s|REPLACE_WITH_32_CHAR_ENCRYPTION_KEY|${ENC_KEY}|g" .env
 
 # Set domain values
 sed -i "s|SUPERADMIN_DOMAIN=.*|SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
@@ -127,6 +127,9 @@ sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://meesho:${PG_PASS}@localhost:
 sed -i "s|REDIS_URL=.*|REDIS_URL=redis://:${REDIS_PASS}@localhost:16379|" .env
 
 echo ".env ready with auto-generated secrets ✓"
+
+# Ensure docker compose uses the generated .env file
+export ENV_FILE=.env
 
 echo "── Verifying key values in .env ──"
 grep -E "^(POSTGRES_PASSWORD|REDIS_PASSWORD|ENGINE_SECRET|ENCRYPTION_KEY|SUPERADMIN_DOMAIN|DATABASE_URL|WABA_TOKEN|WABA_PHONE_ID)" .env
