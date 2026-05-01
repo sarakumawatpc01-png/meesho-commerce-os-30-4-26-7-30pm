@@ -345,7 +345,7 @@ function SecurityTab() {
       <div>
         <h2 className="text-base font-semibold mb-1">Email OTP (Second Factor)</h2>
         <p className="text-sm text-slate-500 mb-3">
-          When enabled, you'll receive a one-time password on your email address after entering your password.
+          When enabled, you&apos;ll receive a one-time password on your email address after entering your password.
         </p>
         <div className="flex items-center gap-3">
           <button
@@ -491,7 +491,7 @@ function SuperadminTab({ sites }: { sites: any[] }) {
       <div>
         <h2 className="text-base font-semibold mb-1">Site Admin Credentials</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Set the login email and password for each store's <code className="text-xs">/admin</code> panel.
+          Set the login email and password for each store&apos;s <code className="text-xs">/admin</code> panel.
           Default password is <code className="text-xs">Admin@123</code> — update each store after install.
         </p>
         <div className="space-y-4">
@@ -611,4 +611,3 @@ function ApiKeysTab() {
     </div>
   );
 }
-

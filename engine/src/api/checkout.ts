@@ -173,12 +173,15 @@ router.post('/initiate', checkoutLimiter, optionalAuth, async (req: Request, res
     [razorpayOrder.id, order.id]
   );
 
+  const razorpayAmount = Number(razorpayOrder.amount);
+  const razorpayTotal = Number.isFinite(razorpayAmount) ? razorpayAmount / 100 : order.total;
+
   res.json({
     orderId: order.id,
     orderNumber,
     razorpayOrderId: razorpayOrder.id,
     razorpayKeyId: req.site.razorpay_key_id,
-    total: razorpayOrder.amount / 100,
+    total: razorpayTotal,
     currency: 'INR',
   });
 });
