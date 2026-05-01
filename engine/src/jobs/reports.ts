@@ -2,44 +2,13 @@ import { query, queryOne } from '../db/client';
 import { ai } from '../services/ai/openrouter';
 import { getAllActiveSites } from './scheduler';
 import { logger } from '../utils/logger';
-import { Resend } from 'resend';
+import { getEmailFrom, getResendClient } from '../services/notifications/resend';
 import dayjs from 'dayjs';
 
-// resendClient: undefined = not initialized, null = disabled (missing key), Resend = ready
-let resendClient: Resend | null | undefined;
-let missingResendKeyLogged = false;
-let missingEmailFromLogged = false;
-
-function getResendClient(): Resend | null {
-  if (resendClient !== undefined) return resendClient;
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    if (!missingResendKeyLogged) {
-      logger.warn('[reports] RESEND_API_KEY not configured; weekly email disabled.');
-      missingResendKeyLogged = true;
-    }
-    resendClient = null;
-    return resendClient;
-  }
-  resendClient = new Resend(apiKey);
-  return resendClient;
-}
-
-function getEmailFrom(): string | null {
-  const from = process.env.EMAIL_FROM;
-  if (!from) {
-    if (!missingEmailFromLogged) {
-      logger.warn('[reports] EMAIL_FROM not configured; weekly email disabled.');
-      missingEmailFromLogged = true;
-    }
-    return null;
-  }
-  return from;
-}
 
 export async function sendWeeklyReport(): Promise<void> {
-  const resend = getResendClient();
-  const fromAddress = getEmailFrom();
+  const resend = getResendClient('[reports]');
+  const fromAddress = getEmailFrom('[reports]');
   if (!resend || !fromAddress) return;
 
   const superAdmin = await queryOne<any>(

@@ -1,38 +1,6 @@
-import { Resend } from 'resend';
 import { Site } from '../../types';
 import { logger } from '../../utils/logger';
-
-// resendClient: undefined = not initialized, null = disabled (missing key), Resend = ready
-let resendClient: Resend | null | undefined;
-let missingResendKeyLogged = false;
-let missingEmailFromLogged = false;
-
-function getResendClient(): Resend | null {
-  if (resendClient !== undefined) return resendClient;
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    if (!missingResendKeyLogged) {
-      logger.warn('RESEND_API_KEY not configured; email sending disabled.');
-      missingResendKeyLogged = true;
-    }
-    resendClient = null;
-    return resendClient;
-  }
-  resendClient = new Resend(apiKey);
-  return resendClient;
-}
-
-function getEmailFrom(): string | null {
-  const from = process.env.EMAIL_FROM;
-  if (!from) {
-    if (!missingEmailFromLogged) {
-      logger.warn('EMAIL_FROM not configured; email sending disabled.');
-      missingEmailFromLogged = true;
-    }
-    return null;
-  }
-  return from;
-}
+import { getEmailFrom, getResendClient } from './resend';
 
 export async function sendOrderConfirmationEmail(order: any, customer: any, site: Site): Promise<void> {
   const email = customer?.email;
