@@ -11,13 +11,9 @@ async function passwordMatches(hash: string | null | undefined, password: string
 }
 
 export async function ensureSuperAdminFromEnv(): Promise<void> {
-  const desiredEmail = (process.env.SUPER_ADMIN_EMAIL || DEFAULT_EMAIL).trim().toLowerCase();
+  const rawEmail = process.env.SUPER_ADMIN_EMAIL?.trim();
+  const desiredEmail = (rawEmail || DEFAULT_EMAIL).toLowerCase();
   const desiredPassword = process.env.SUPER_ADMIN_PASSWORD || DEFAULT_PASSWORD;
-
-  if (!desiredEmail || !desiredPassword) {
-    logger.warn('SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD not set; skipping super admin bootstrap.');
-    return;
-  }
 
   const existing = await queryOne<{ id: string; password: string }>(
     `SELECT id, password FROM engine.admin_users WHERE email = $1`,
@@ -25,6 +21,7 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
   );
   if (existing) {
     if (await passwordMatches(existing.password, desiredPassword)) return;
+    // Only update when the stored password is still the original default to avoid overwriting manual changes.
     if (await passwordMatches(existing.password, DEFAULT_PASSWORD) && desiredPassword !== DEFAULT_PASSWORD) {
       const passwordHash = await bcrypt.hash(desiredPassword, 12);
       await query(
@@ -41,6 +38,7 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
     [DEFAULT_EMAIL]
   );
   if (legacyDefault && desiredEmail !== DEFAULT_EMAIL) {
+    // Only migrate the legacy default account when it still uses the default password.
     if (await passwordMatches(legacyDefault.password, DEFAULT_PASSWORD)) {
       const passwordHash = await bcrypt.hash(desiredPassword, 12);
       await query(
