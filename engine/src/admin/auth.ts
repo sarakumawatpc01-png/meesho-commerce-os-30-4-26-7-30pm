@@ -10,19 +10,13 @@ import { createError } from '../middleware/error-handler';
 import { encrypt, decrypt } from '../utils/crypto';
 import { auditLog } from '../services/audit';
 import { logger } from '../utils/logger';
+import { normalizeBcryptHash } from '../utils/passwords';
 
 const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
 
-type AdminPasswordRow = { id: string; password: string };
-
-function normalizeBcryptHash(hash: string): string {
-  if (hash.startsWith('$2y$') || hash.startsWith('$2x$')) {
-    return `$2b$${hash.slice(4)}`;
-  }
-  return hash;
-}
+type AdminPasswordRow = { password: string };
 
 async function verifyPassword(password: string, passwordHash?: string | null): Promise<boolean> {
   if (!passwordHash) return false;
@@ -237,7 +231,7 @@ router.patch('/me', apiLimiter, requireAdmin, async (req: any, res: Response) =>
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<AdminPasswordRow>(`SELECT id, password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
+    const row = await queryOne<AdminPasswordRow>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
     if (!row || !(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
