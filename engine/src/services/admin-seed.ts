@@ -42,11 +42,11 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
   const rawPassword = process.env.SUPER_ADMIN_PASSWORD;
   const desiredPassword = rawPassword || DEFAULT_PASSWORD;
 
-  if (!rawPassword && desiredPassword === DEFAULT_PASSWORD) {
+  if (!rawPassword) {
     logger.warn('Using default SUPER_ADMIN_PASSWORD; set SUPER_ADMIN_PASSWORD to override.');
   }
 
-  if (rawEmail && !rawPassword && desiredEmail !== DEFAULT_EMAIL) {
+  if (rawEmail && !rawPassword && rawEmail.toLowerCase() !== DEFAULT_EMAIL) {
     logger.warn('SUPER_ADMIN_EMAIL set without SUPER_ADMIN_PASSWORD; skipping env override.');
     return;
   }
