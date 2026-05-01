@@ -234,8 +234,11 @@ router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Res
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<{ password: string }>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
-    if (!row || !(await verifyPassword(currentPassword, row.password))) {
+    const row = await queryOne<{ password: string | null }>(
+      `SELECT password FROM engine.admin_users WHERE id = $1`,
+      [req.admin.id]
+    );
+    if (!row?.password || !(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
     passwordHash = await bcrypt.hash(newPassword, 12);
