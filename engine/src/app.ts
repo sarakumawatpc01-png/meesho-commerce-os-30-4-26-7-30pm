@@ -1,6 +1,21 @@
 import 'express-async-errors';
 import dotenv from 'dotenv';
-dotenv.config();
+import fs from 'fs';
+import path from 'path';
+
+const envPath = (() => {
+  const localPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(localPath)) return localPath;
+  const rootPath = path.resolve(process.cwd(), '..', '.env');
+  if (fs.existsSync(rootPath)) return rootPath;
+  return null;
+})();
+
+if (envPath) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 import express from 'express';
 import helmet from 'helmet';

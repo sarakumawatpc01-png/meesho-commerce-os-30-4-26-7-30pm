@@ -15,6 +15,7 @@ import { normalizeBcryptHash } from '../utils/passwords';
 const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
+type AdminPasswordRow = { password: string | null };
 
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
@@ -234,7 +235,7 @@ router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Res
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<{ password: string | null }>(
+    const row = await queryOne<AdminPasswordRow>(
       `SELECT password FROM engine.admin_users WHERE id = $1`,
       [req.admin.id]
     );

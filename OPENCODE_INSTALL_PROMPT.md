@@ -100,35 +100,33 @@ PHASE 3 — Create .env file
 ```bash
 cd /opt/meesho-commerce-os
 
-if [ -f .env ]; then
-  echo ".env already exists — skipping creation (edit manually if needed)"
-else
+if [ ! -f .env ]; then
   cp .env.example .env
-
-  # Generate cryptographically strong secrets
-  PG_PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 40)
-  REDIS_PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
-  ENGINE_SECRET=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)
-  ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
-
-  # Substitute into .env
-  sed -i "s|CHANGE_ME_STRONG_PASSWORD_HERE|${PG_PASS}|g" .env
-  sed -i "s|CHANGE_ME_REDIS_PASSWORD|${REDIS_PASS}|g" .env
-  sed -i "s|CHANGE_ME_64_CHAR_RANDOM_SECRET_FOR_JWT_AND_ENCRYPTION|${ENGINE_SECRET}|g" .env
-  sed -i "s|CHANGE_ME_32_CHAR_ENCRYPTION_KEY_|${ENC_KEY}|g" .env
-
-  # Set domain values
-  sed -i "s|SUPERADMIN_DOMAIN=.*|SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
-  sed -i "s|NEXT_PUBLIC_SUPERADMIN_DOMAIN=.*|NEXT_PUBLIC_SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
-
-  # Update DATABASE_URL and REDIS_URL to use the generated passwords
-  # NOTE: docker-compose overrides these with service names (postgres, redis) in container networking
-  # .env values are used for direct local access only
-  sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://meesho:${PG_PASS}@localhost:15432/meesho_engine|" .env
-  sed -i "s|REDIS_URL=.*|REDIS_URL=redis://:${REDIS_PASS}@localhost:16379|" .env
-
-  echo ".env created with auto-generated secrets ✓"
 fi
+
+# Generate cryptographically strong secrets
+PG_PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 40)
+REDIS_PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
+ENGINE_SECRET=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)
+ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+# Substitute into .env (placeholders only)
+sed -i "s|CHANGE_ME_STRONG_PASSWORD_HERE|${PG_PASS}|g" .env
+sed -i "s|CHANGE_ME_REDIS_PASSWORD|${REDIS_PASS}|g" .env
+sed -i "s|CHANGE_ME_64_CHAR_RANDOM_SECRET_FOR_JWT_AND_ENCRYPTION|${ENGINE_SECRET}|g" .env
+sed -i "s|CHANGE_ME_32_CHAR_ENCRYPTION_KEY_|${ENC_KEY}|g" .env
+
+# Set domain values
+sed -i "s|SUPERADMIN_DOMAIN=.*|SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
+sed -i "s|NEXT_PUBLIC_SUPERADMIN_DOMAIN=.*|NEXT_PUBLIC_SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
+
+# Update DATABASE_URL and REDIS_URL to use the generated passwords
+# NOTE: docker-compose overrides these with service names (postgres, redis) in container networking
+# .env values are used for direct local access only
+sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://meesho:${PG_PASS}@localhost:15432/meesho_engine|" .env
+sed -i "s|REDIS_URL=.*|REDIS_URL=redis://:${REDIS_PASS}@localhost:16379|" .env
+
+echo ".env ready with auto-generated secrets ✓"
 
 echo "── Verifying key values in .env ──"
 grep -E "^(POSTGRES_PASSWORD|REDIS_PASSWORD|ENGINE_SECRET|ENCRYPTION_KEY|SUPERADMIN_DOMAIN|DATABASE_URL|WABA_TOKEN|WABA_PHONE_ID)" .env
