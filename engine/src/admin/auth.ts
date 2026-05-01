@@ -5,15 +5,31 @@ import { authenticator } from 'otplib';
 import nodemailer from 'nodemailer';
 import { query, queryOne } from '../db/client';
 import { generateTokens, requireAdmin } from '../middleware/auth';
-import { adminLoginLimiter } from '../middleware/rate-limit';
+import { adminLoginLimiter, adminProfileLimiter } from '../middleware/rate-limit';
 import { createError } from '../middleware/error-handler';
 import { encrypt, decrypt } from '../utils/crypto';
 import { auditLog } from '../services/audit';
 import { logger } from '../utils/logger';
+import { normalizeBcryptHash } from '../utils/passwords';
 
 const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
+type AdminPasswordRow = { password: string | null };
+
+function normalizeEmailAddress(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+async function verifyPassword(password: string, passwordHash?: string | null): Promise<boolean> {
+  if (!passwordHash) return false;
+  try {
+    return await bcrypt.compare(password, normalizeBcryptHash(passwordHash));
+  } catch (err) {
+    logger.warn('Failed bcrypt compare for admin password.', err);
+    return false;
+  }
+}
 
 // ── Send email OTP ────────────────────────────────────────────
 async function sendEmailOtp(email: string, otp: string): Promise<void> {
@@ -55,9 +71,10 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     emailOtp: z.string().optional(),
   }).parse(req.body);
 
+  const normalizedEmail = normalizeEmailAddress(email);
   const admin = await queryOne<any>(
     `SELECT * FROM engine.admin_users WHERE email = $1 AND is_active = true`,
-    [email.toLowerCase()]
+    [normalizedEmail]
   );
   if (!admin) throw createError(401, 'Invalid email or password');
 
@@ -65,7 +82,7 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     throw createError(429, 'Account temporarily locked. Try again later.');
   }
 
-  const passwordValid = await bcrypt.compare(password, admin.password);
+  const passwordValid = await verifyPassword(password, admin.password);
   if (!passwordValid) {
     const attempts = (admin.login_attempts || 0) + 1;
     const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
@@ -156,10 +173,11 @@ router.post('/site-login', adminLoginLimiter, async (req: any, res: Response) =>
   if (!site.site_admin_email || !site.site_admin_password_hash) {
     throw createError(500, 'Site admin credentials not configured. Contact superadmin.');
   }
-  if (site.site_admin_email.toLowerCase() !== email.toLowerCase()) {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (site.site_admin_email.toLowerCase() !== normalizedEmail) {
     throw createError(401, 'Invalid email or password');
   }
-  if (!(await bcrypt.compare(password, site.site_admin_password_hash))) {
+  if (!(await verifyPassword(password, site.site_admin_password_hash))) {
     throw createError(401, 'Invalid email or password');
   }
 
@@ -182,6 +200,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const jwt = require('jsonwebtoken');
     const payload = jwt.verify(refreshToken, process.env.ENGINE_SECRET || 'dev-secret-change-in-production');
+    if (!payload || payload.type !== 'admin') throw new Error('Invalid token type');
     const tokens = generateTokens({ sub: payload.sub, type: 'admin', role: payload.role, siteId: payload.siteId });
     res.json({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
   } catch {
@@ -203,7 +222,7 @@ router.get('/me', requireAdmin, async (req: any, res: Response) => {
 });
 
 // PATCH /admin/api/auth/me — update own email/password
-router.patch('/me', requireAdmin, async (req: any, res: Response) => {
+router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Response) => {
   if (req.admin.role !== 'super_admin') throw createError(403, 'Superadmin only');
 
   const { name, email, currentPassword, newPassword } = z.object({
@@ -216,8 +235,14 @@ router.patch('/me', requireAdmin, async (req: any, res: Response) => {
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<any>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
-    if (!row || !(await bcrypt.compare(currentPassword, row.password))) {
+    const row = await queryOne<AdminPasswordRow>(
+      `SELECT password FROM engine.admin_users WHERE id = $1`,
+      [req.admin.id]
+    );
+    if (row?.password == null) {
+      throw createError(401, 'Current password is not set');
+    }
+    if (!(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
     passwordHash = await bcrypt.hash(newPassword, 12);

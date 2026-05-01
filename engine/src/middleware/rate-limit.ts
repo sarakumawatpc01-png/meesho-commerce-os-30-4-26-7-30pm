@@ -33,6 +33,13 @@ export const adminLoginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// Superadmin profile updates (email/password)
+export const adminProfileLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many profile update attempts. Please try again later.' },
+});
+
 // Search limiter
 export const searchLimiter = rateLimit({
   windowMs: 60 * 1000,

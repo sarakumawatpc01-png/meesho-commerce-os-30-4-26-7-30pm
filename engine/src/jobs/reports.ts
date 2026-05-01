@@ -2,12 +2,15 @@ import { query, queryOne } from '../db/client';
 import { ai } from '../services/ai/openrouter';
 import { getAllActiveSites } from './scheduler';
 import { logger } from '../utils/logger';
-import { Resend } from 'resend';
+import { getEmailFrom, getResendClient } from '../services/notifications/resend';
 import dayjs from 'dayjs';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendWeeklyReport(): Promise<void> {
+  const resend = getResendClient('[reports]');
+  const fromAddress = getEmailFrom('[reports]');
+  if (!resend || !fromAddress) return;
+
   const superAdmin = await queryOne<any>(
     `SELECT email, name FROM engine.admin_users WHERE role = 'super_admin' AND is_active = true LIMIT 1`
   );
@@ -56,7 +59,7 @@ export async function sendWeeklyReport(): Promise<void> {
 
   try {
     await resend.emails.send({
-      from: `Meesho Commerce OS <${process.env.EMAIL_FROM}>`,
+      from: `Meesho Commerce OS <${fromAddress}>`,
       to: superAdmin.email,
       subject: `📊 Weekly Report — ${dayjs().format('DD MMM YYYY')} | ₹${totalRevenue.toFixed(0)} Revenue`,
       html: `

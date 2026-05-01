@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { query, queryOne } from '../db/client';
 import { logger } from '../utils/logger';
+import { normalizeBcryptHash } from '../utils/passwords';
 
 const DEFAULT_EMAIL = 'admin@agencyfic.com';
 const DEFAULT_PASSWORD = 'Admin@123';
@@ -8,7 +9,7 @@ const DEFAULT_PASSWORD = 'Admin@123';
 async function passwordMatches(hash: string | null | undefined, password: string): Promise<boolean> {
   if (!hash) return false;
   try {
-    return await bcrypt.compare(password, hash);
+    return await bcrypt.compare(password, normalizeBcryptHash(hash));
   } catch (err) {
     logger.warn('Failed to compare admin password hash.', err);
     return false;

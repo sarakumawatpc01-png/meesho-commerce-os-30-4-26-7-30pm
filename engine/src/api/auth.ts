@@ -86,6 +86,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const jwt = require('jsonwebtoken');
     const payload = jwt.verify(refreshToken, process.env.ENGINE_SECRET);
+    if (!payload || payload.type !== 'customer') throw new Error('Invalid token type');
     const tokens = generateTokens({ sub: payload.sub, type: 'customer' });
     res.json({ accessToken: tokens.accessToken });
   } catch {

@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile
     container_name: meesho_engine
     restart: unless-stopped
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.example}
     environment:
       NODE_ENV:    production
       PORT:        3001
@@ -89,7 +89,7 @@ services:
       dockerfile: Dockerfile
     container_name: meesho_admin_ui
     restart: unless-stopped
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.example}
     environment:
       NODE_ENV:                        production
       PORT:                            3000
