@@ -10,6 +10,7 @@ import { sendOrderConfirmation } from '../services/notifications/whatsapp';
 import { sendOrderConfirmationEmail } from '../services/notifications/email';
 import { scoreCodRisk } from '../services/orders/cod-risk';
 import { auditLog } from '../services/audit';
+import { logger } from '../utils/logger';
 import dayjs from 'dayjs';
 
 const router = Router();
@@ -173,12 +174,23 @@ router.post('/initiate', checkoutLimiter, optionalAuth, async (req: Request, res
     [razorpayOrder.id, order.id]
   );
 
+  const razorpayAmount = Number(razorpayOrder.amount);
+  const orderTotalRupees = Number(order.total);
+  const razorpayTotal = Number.isFinite(razorpayAmount) ? razorpayAmount / 100 : orderTotalRupees;
+  if (!Number.isFinite(razorpayAmount)) {
+    logger.warn('Razorpay order amount was not numeric; falling back to order total in rupees', {
+      orderId: order.id,
+      razorpayAmount: razorpayOrder.amount,
+      orderTotalRupees,
+    });
+  }
+
   res.json({
     orderId: order.id,
     orderNumber,
     razorpayOrderId: razorpayOrder.id,
     razorpayKeyId: req.site.razorpay_key_id,
-    total: razorpayOrder.amount / 100,
+    total: razorpayTotal,
     currency: 'INR',
   });
 });

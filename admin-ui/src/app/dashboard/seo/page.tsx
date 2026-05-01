@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { seoApi, sitesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { RefreshCw, FileText, Globe, Sparkles } from 'lucide-react';
@@ -17,6 +17,20 @@ export default function SeoPage() {
   const [blogForm, setBlogForm] = useState({ topic: '', lang: 'en' as 'en' | 'hi' });
   const [keywords, setKeywords] = useState<any[]>([]);
 
+  const loadBlogPosts = useCallback(async () => {
+    try {
+      const { data } = await seoApi.blogPosts(siteSlug);
+      setBlogPosts(data.posts || []);
+    } catch {}
+  }, [siteSlug]);
+
+  const loadKeywords = useCallback(async () => {
+    try {
+      const { data } = await seoApi.keywords(siteSlug);
+      setKeywords(data.keywords || []);
+    } catch {}
+  }, [siteSlug]);
+
   useEffect(() => {
     sitesApi.list().then(({ data }) => {
       const list = data.sites || [];
@@ -29,21 +43,7 @@ export default function SeoPage() {
     if (!siteSlug) return;
     if (tab === 'Blog Posts') loadBlogPosts();
     if (tab === 'Keywords') loadKeywords();
-  }, [siteSlug, tab]);
-
-  async function loadBlogPosts() {
-    try {
-      const { data } = await seoApi.blogPosts(siteSlug);
-      setBlogPosts(data.posts || []);
-    } catch {}
-  }
-
-  async function loadKeywords() {
-    try {
-      const { data } = await seoApi.keywords(siteSlug);
-      setKeywords(data.keywords || []);
-    } catch {}
-  }
+  }, [siteSlug, tab, loadBlogPosts, loadKeywords]);
 
   async function runAudit() {
     setAuditing(true);

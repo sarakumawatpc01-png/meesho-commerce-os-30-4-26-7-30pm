@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { productsApi, sitesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Search, Plus, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
@@ -174,10 +175,12 @@ export default function ProductsPage() {
               {/* Image */}
               <div className="relative aspect-[3/4] bg-slate-100 dark:bg-slate-700">
                 {product.images?.[0] ? (
-                  <img
+                  <Image
                     src={product.images[0]}
                     alt={product.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-4xl">👗</div>

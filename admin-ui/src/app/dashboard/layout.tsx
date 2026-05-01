@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       setReady(true);
     }).catch(() => setReady(true));
-  }, []);
+  }, [router]);
 
   if (!ready) {
     return (

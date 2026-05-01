@@ -48,6 +48,7 @@ import adminWhatsappRouter from './admin/whatsapp-admin';
 import adminSeoRouter from './admin/seo-admin';
 import adminMeeshoAccountsRouter from './admin/meesho-accounts';
 import adminApiKeysRouter from './admin/api-keys';
+import { ensureSuperAdminFromEnv } from './services/admin-seed';
 
 // Scheduled jobs
 import { startScheduler } from './jobs/scheduler';
@@ -148,6 +149,9 @@ async function start() {
     const redis = await getRedis();
     await redis.ping();
     logger.info('Redis connected');
+
+    // Ensure super admin bootstrap from env values
+    await ensureSuperAdminFromEnv();
 
     // Start background jobs
     await startScheduler();

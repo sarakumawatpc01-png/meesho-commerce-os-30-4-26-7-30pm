@@ -6,36 +6,39 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "eslint --max-warnings=0 \"src/**/*.{ts,tsx}\"",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "@hookform/resolvers": "^3.9.0",
+    "@types/js-cookie": "^3.0.6",
+    "axios": "^1.7.2",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.407.0",
+    "next": "^16.2.4",
+    "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "axios": "^1.7.2",
-    "recharts": "^2.12.7",
-    "date-fns": "^3.6.0",
-    "react-hot-toast": "^2.4.1",
     "react-hook-form": "^7.52.1",
-    "zod": "^3.23.8",
-    "@hookform/resolvers": "^3.9.0",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.407.0",
-    "next-themes": "^0.3.0",
+    "react-hot-toast": "^2.4.1",
     "react-query": "^3.39.3",
-    "js-cookie": "^3.0.5",
-    "@types/js-cookie": "^3.0.6"
+    "recharts": "^2.12.7",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.5",
-    "postcss": "^8.4.39",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.2.4",
+    "postcss": "8.5.10",
     "tailwindcss": "^3.4.6",
-    "typescript": "^5.5.3"
+    "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
   }
 }

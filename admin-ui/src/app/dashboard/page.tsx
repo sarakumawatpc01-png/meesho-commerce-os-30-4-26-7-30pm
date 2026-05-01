@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { dashboardApi } from '@/lib/api';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -128,8 +129,16 @@ export default function DashboardPage() {
             {topProducts.slice(0, 5).map((p, i) => (
               <div key={p.id} className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-400 w-5">#{i + 1}</span>
-                <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                  {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
+                <div className="relative w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                  {p.image && (
+                    <Image
+                      src={p.image}
+                      alt={p.title || 'Product image'}
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</p>
