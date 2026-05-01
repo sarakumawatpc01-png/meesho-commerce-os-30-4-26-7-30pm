@@ -15,6 +15,35 @@ const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
 
+async function verifyAdminPassword(adminId: string, password: string, passwordHash?: string | null): Promise<boolean> {
+  if (!passwordHash) return false;
+  try {
+    if (await bcrypt.compare(password, passwordHash)) return true;
+  } catch (err) {
+    logger.warn('Failed bcrypt compare for admin password.', err);
+  }
+  const row = await queryOne<{ valid: boolean }>(
+    `SELECT password = crypt($1, password) AS valid FROM engine.admin_users WHERE id = $2`,
+    [password, adminId]
+  );
+  return !!row?.valid;
+}
+
+async function verifySiteAdminPassword(siteId: string, password: string, passwordHash?: string | null): Promise<boolean> {
+  if (!passwordHash) return false;
+  try {
+    if (await bcrypt.compare(password, passwordHash)) return true;
+  } catch (err) {
+    logger.warn('Failed bcrypt compare for site admin password.', err);
+  }
+  const row = await queryOne<{ valid: boolean }>(
+    `SELECT site_admin_password_hash = crypt($1, site_admin_password_hash) AS valid
+     FROM engine.sites WHERE id = $2`,
+    [password, siteId]
+  );
+  return !!row?.valid;
+}
+
 // ── Send email OTP ────────────────────────────────────────────
 async function sendEmailOtp(email: string, otp: string): Promise<void> {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
@@ -55,9 +84,10 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     emailOtp: z.string().optional(),
   }).parse(req.body);
 
+  const normalizedEmail = email.trim().toLowerCase();
   const admin = await queryOne<any>(
     `SELECT * FROM engine.admin_users WHERE email = $1 AND is_active = true`,
-    [email.toLowerCase()]
+    [normalizedEmail]
   );
   if (!admin) throw createError(401, 'Invalid email or password');
 
@@ -65,7 +95,7 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     throw createError(429, 'Account temporarily locked. Try again later.');
   }
 
-  const passwordValid = await bcrypt.compare(password, admin.password);
+  const passwordValid = await verifyAdminPassword(admin.id, password, admin.password);
   if (!passwordValid) {
     const attempts = (admin.login_attempts || 0) + 1;
     const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
@@ -159,7 +189,7 @@ router.post('/site-login', adminLoginLimiter, async (req: any, res: Response) =>
   if (site.site_admin_email.toLowerCase() !== email.toLowerCase()) {
     throw createError(401, 'Invalid email or password');
   }
-  if (!(await bcrypt.compare(password, site.site_admin_password_hash))) {
+  if (!(await verifySiteAdminPassword(site.id, password, site.site_admin_password_hash))) {
     throw createError(401, 'Invalid email or password');
   }
 
@@ -182,6 +212,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const jwt = require('jsonwebtoken');
     const payload = jwt.verify(refreshToken, process.env.ENGINE_SECRET || 'dev-secret-change-in-production');
+    if (!payload || payload.type !== 'admin') throw new Error('Invalid token type');
     const tokens = generateTokens({ sub: payload.sub, type: 'admin', role: payload.role, siteId: payload.siteId });
     res.json({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
   } catch {
@@ -216,8 +247,8 @@ router.patch('/me', requireAdmin, async (req: any, res: Response) => {
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<any>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
-    if (!row || !(await bcrypt.compare(currentPassword, row.password))) {
+    const row = await queryOne<any>(`SELECT id, password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
+    if (!row || !(await verifyAdminPassword(row.id, currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
     passwordHash = await bcrypt.hash(newPassword, 12);
