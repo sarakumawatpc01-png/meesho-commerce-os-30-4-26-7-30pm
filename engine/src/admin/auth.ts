@@ -5,7 +5,7 @@ import { authenticator } from 'otplib';
 import nodemailer from 'nodemailer';
 import { query, queryOne } from '../db/client';
 import { generateTokens, requireAdmin } from '../middleware/auth';
-import { adminLoginLimiter } from '../middleware/rate-limit';
+import { adminLoginLimiter, apiLimiter } from '../middleware/rate-limit';
 import { createError } from '../middleware/error-handler';
 import { encrypt, decrypt } from '../utils/crypto';
 import { auditLog } from '../services/audit';
@@ -15,33 +15,23 @@ const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
 
-async function verifyAdminPassword(adminId: string, password: string, passwordHash?: string | null): Promise<boolean> {
-  if (!passwordHash) return false;
-  try {
-    if (await bcrypt.compare(password, passwordHash)) return true;
-  } catch (err) {
-    logger.warn('Failed bcrypt compare for admin password.', err);
+type AdminPasswordRow = { id: string; password: string };
+
+function normalizeBcryptHash(hash: string): string {
+  if (hash.startsWith('$2y$') || hash.startsWith('$2x$')) {
+    return `$2b$${hash.slice(4)}`;
   }
-  const row = await queryOne<{ valid: boolean }>(
-    `SELECT password = crypt($1, password) AS valid FROM engine.admin_users WHERE id = $2`,
-    [password, adminId]
-  );
-  return !!row?.valid;
+  return hash;
 }
 
-async function verifySiteAdminPassword(siteId: string, password: string, passwordHash?: string | null): Promise<boolean> {
+async function verifyPassword(password: string, passwordHash?: string | null): Promise<boolean> {
   if (!passwordHash) return false;
   try {
-    if (await bcrypt.compare(password, passwordHash)) return true;
+    return await bcrypt.compare(password, normalizeBcryptHash(passwordHash));
   } catch (err) {
-    logger.warn('Failed bcrypt compare for site admin password.', err);
+    logger.warn('Failed bcrypt compare for admin password.', err);
+    return false;
   }
-  const row = await queryOne<{ valid: boolean }>(
-    `SELECT site_admin_password_hash = crypt($1, site_admin_password_hash) AS valid
-     FROM engine.sites WHERE id = $2`,
-    [password, siteId]
-  );
-  return !!row?.valid;
 }
 
 // ── Send email OTP ────────────────────────────────────────────
@@ -95,7 +85,7 @@ router.post('/login', adminLoginLimiter, async (req: Request, res: Response) => 
     throw createError(429, 'Account temporarily locked. Try again later.');
   }
 
-  const passwordValid = await verifyAdminPassword(admin.id, password, admin.password);
+  const passwordValid = await verifyPassword(password, admin.password);
   if (!passwordValid) {
     const attempts = (admin.login_attempts || 0) + 1;
     const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
@@ -189,7 +179,7 @@ router.post('/site-login', adminLoginLimiter, async (req: any, res: Response) =>
   if (site.site_admin_email.toLowerCase() !== email.toLowerCase()) {
     throw createError(401, 'Invalid email or password');
   }
-  if (!(await verifySiteAdminPassword(site.id, password, site.site_admin_password_hash))) {
+  if (!(await verifyPassword(password, site.site_admin_password_hash))) {
     throw createError(401, 'Invalid email or password');
   }
 
@@ -234,7 +224,7 @@ router.get('/me', requireAdmin, async (req: any, res: Response) => {
 });
 
 // PATCH /admin/api/auth/me — update own email/password
-router.patch('/me', requireAdmin, async (req: any, res: Response) => {
+router.patch('/me', apiLimiter, requireAdmin, async (req: any, res: Response) => {
   if (req.admin.role !== 'super_admin') throw createError(403, 'Superadmin only');
 
   const { name, email, currentPassword, newPassword } = z.object({
@@ -247,8 +237,8 @@ router.patch('/me', requireAdmin, async (req: any, res: Response) => {
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<any>(`SELECT id, password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
-    if (!row || !(await verifyAdminPassword(row.id, currentPassword, row.password))) {
+    const row = await queryOne<AdminPasswordRow>(`SELECT id, password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
+    if (!row || !(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
     passwordHash = await bcrypt.hash(newPassword, 12);

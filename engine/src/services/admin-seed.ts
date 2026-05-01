@@ -5,10 +5,17 @@ import { logger } from '../utils/logger';
 const DEFAULT_EMAIL = 'admin@agencyfic.com';
 const DEFAULT_PASSWORD = 'Admin@123';
 
+function normalizeBcryptHash(hash: string): string {
+  if (hash.startsWith('$2y$') || hash.startsWith('$2x$')) {
+    return `$2b$${hash.slice(4)}`;
+  }
+  return hash;
+}
+
 async function passwordMatches(hash: string | null | undefined, password: string): Promise<boolean> {
   if (!hash) return false;
   try {
-    return await bcrypt.compare(password, hash);
+    return await bcrypt.compare(password, normalizeBcryptHash(hash));
   } catch (err) {
     logger.warn('Failed to compare admin password hash.', err);
     return false;
