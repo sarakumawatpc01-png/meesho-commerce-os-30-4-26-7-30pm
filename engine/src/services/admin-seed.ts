@@ -20,9 +20,11 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
     [desiredEmail]
   );
   if (existing) {
-    if (await passwordMatches(existing.password, desiredPassword)) return;
+    const matchesDesired = await passwordMatches(existing.password, desiredPassword);
+    if (matchesDesired) return;
+    const matchesDefault = await passwordMatches(existing.password, DEFAULT_PASSWORD);
     // Only update when the stored password is still the original default to avoid overwriting manual changes.
-    if (await passwordMatches(existing.password, DEFAULT_PASSWORD) && desiredPassword !== DEFAULT_PASSWORD) {
+    if (matchesDefault && desiredPassword !== DEFAULT_PASSWORD) {
       const passwordHash = await bcrypt.hash(desiredPassword, 12);
       await query(
         `UPDATE engine.admin_users SET password = $1, updated_at = NOW() WHERE id = $2`,
@@ -39,7 +41,8 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
   );
   if (legacyDefault && desiredEmail !== DEFAULT_EMAIL) {
     // Only migrate the legacy default account when it still uses the default password.
-    if (await passwordMatches(legacyDefault.password, DEFAULT_PASSWORD)) {
+    const legacyMatchesDefault = await passwordMatches(legacyDefault.password, DEFAULT_PASSWORD);
+    if (legacyMatchesDefault) {
       const passwordHash = await bcrypt.hash(desiredPassword, 12);
       await query(
         `UPDATE engine.admin_users
