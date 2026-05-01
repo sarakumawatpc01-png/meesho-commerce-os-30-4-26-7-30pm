@@ -10,6 +10,7 @@ import { sendOrderConfirmation } from '../services/notifications/whatsapp';
 import { sendOrderConfirmationEmail } from '../services/notifications/email';
 import { scoreCodRisk } from '../services/orders/cod-risk';
 import { auditLog } from '../services/audit';
+import { logger } from '../utils/logger';
 import dayjs from 'dayjs';
 
 const router = Router();
@@ -175,6 +176,12 @@ router.post('/initiate', checkoutLimiter, optionalAuth, async (req: Request, res
 
   const razorpayAmount = Number(razorpayOrder.amount);
   const razorpayTotal = Number.isFinite(razorpayAmount) ? razorpayAmount / 100 : order.total;
+  if (!Number.isFinite(razorpayAmount)) {
+    logger.warn('Razorpay order amount was not numeric; falling back to order total', {
+      orderId: order.id,
+      razorpayAmount: razorpayOrder.amount,
+    });
+  }
 
   res.json({
     orderId: order.id,
