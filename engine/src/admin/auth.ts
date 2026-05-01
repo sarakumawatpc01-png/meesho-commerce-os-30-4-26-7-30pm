@@ -5,7 +5,7 @@ import { authenticator } from 'otplib';
 import nodemailer from 'nodemailer';
 import { query, queryOne } from '../db/client';
 import { generateTokens, requireAdmin } from '../middleware/auth';
-import { adminLoginLimiter, apiLimiter } from '../middleware/rate-limit';
+import { adminLoginLimiter, adminProfileLimiter } from '../middleware/rate-limit';
 import { createError } from '../middleware/error-handler';
 import { encrypt, decrypt } from '../utils/crypto';
 import { auditLog } from '../services/audit';
@@ -15,8 +15,6 @@ import { normalizeBcryptHash } from '../utils/passwords';
 const router = Router();
 
 const SUPERADMIN_DOMAIN = process.env.SUPERADMIN_DOMAIN || 'meesho.agencyfic.com';
-
-type AdminPasswordRow = { password: string };
 
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
@@ -223,7 +221,7 @@ router.get('/me', requireAdmin, async (req: any, res: Response) => {
 });
 
 // PATCH /admin/api/auth/me — update own email/password
-router.patch('/me', apiLimiter, requireAdmin, async (req: any, res: Response) => {
+router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Response) => {
   if (req.admin.role !== 'super_admin') throw createError(403, 'Superadmin only');
 
   const { name, email, currentPassword, newPassword } = z.object({
@@ -236,7 +234,7 @@ router.patch('/me', apiLimiter, requireAdmin, async (req: any, res: Response) =>
   let passwordHash: string | undefined;
   if (newPassword) {
     if (!currentPassword) throw createError(400, 'Current password required');
-    const row = await queryOne<AdminPasswordRow>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
+    const row = await queryOne<{ password: string }>(`SELECT password FROM engine.admin_users WHERE id = $1`, [req.admin.id]);
     if (!row || !(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
