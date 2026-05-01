@@ -26,7 +26,11 @@ cd /opt/meesho-commerce-os
 
 # Copy and fill environment variables
 cp .env.example .env
-# Set ENV_FILE=.env when running docker compose to use your filled file
+# Docker Compose variable interpolation (e.g. `${POSTGRES_PASSWORD}` in `docker-compose.yml`)
+# reads from the default project `.env` OR from `docker compose --env-file ...`.
+#
+# `ENV_FILE` is a separate variable used by this repo's `docker-compose.yml` to point
+# services at an `env_file:`. It does not affect Compose interpolation by itself.
 nano .env
 ```
 
@@ -57,6 +61,13 @@ Edit `.env` and fill:
 cd /opt/meesho-commerce-os
 
 # Use the filled .env file for compose
+# Option A (recommended): use `.env` as the Compose env file (default behavior)
+# - Keep your filled env at: /opt/meesho-commerce-os/.env
+# - Run `docker compose ...` normally
+#
+# Option B: use a non-default env file name (example: `.env.prod`)
+# - Run with: docker compose --env-file .env.prod up -d --build
+# - AND point services at it: export ENV_FILE=.env.prod
 export ENV_FILE=.env
 
 # Build and start all services

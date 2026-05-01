@@ -104,39 +104,43 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-# Generate cryptographically strong secrets
-PG_PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 40)
-REDIS_PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
-ENGINE_SECRET=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)
-ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
-
-# Substitute into .env (placeholders only)
+# Substitute secrets into .env in an idempotent way
 # Placeholders must match .env.example values
-MISSING_PLACEHOLDER=0
+PLACEHOLDER_COUNT=0
 for placeholder in REPLACE_WITH_SECURE_POSTGRES_PASSWORD REPLACE_WITH_SECURE_REDIS_PASSWORD \
   REPLACE_WITH_64_CHAR_JWT_SECRET REPLACE_WITH_32_CHAR_ENCRYPTION_KEY; do
-  if ! grep -q "$placeholder" .env; then
-    echo "ERROR: Placeholder $placeholder not found in .env"
-    MISSING_PLACEHOLDER=1
+  if grep -q "$placeholder" .env; then
+    PLACEHOLDER_COUNT=$((PLACEHOLDER_COUNT + 1))
   fi
 done
-if [ "$MISSING_PLACEHOLDER" -ne 0 ]; then
+
+if [ "$PLACEHOLDER_COUNT" -eq 4 ]; then
+  # Generate cryptographically strong secrets only when placeholders are present
+  PG_PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 40)
+  REDIS_PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
+  ENGINE_SECRET=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)
+  ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+  sed -i "s|REPLACE_WITH_SECURE_POSTGRES_PASSWORD|${PG_PASS}|g" .env
+  sed -i "s|REPLACE_WITH_SECURE_REDIS_PASSWORD|${REDIS_PASS}|g" .env
+  sed -i "s|REPLACE_WITH_64_CHAR_JWT_SECRET|${ENGINE_SECRET}|g" .env
+  sed -i "s|REPLACE_WITH_32_CHAR_ENCRYPTION_KEY|${ENC_KEY}|g" .env
+
+  # Update DATABASE_URL and REDIS_URL to use the generated passwords
+  # NOTE: docker-compose overrides these with service names (postgres, redis) in container networking
+  # .env values are used for direct local access only
+  sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://meesho:${PG_PASS}@localhost:15432/meesho_engine|" .env
+  sed -i "s|REDIS_URL=.*|REDIS_URL=redis://:${REDIS_PASS}@localhost:16379|" .env
+elif [ "$PLACEHOLDER_COUNT" -eq 0 ]; then
+  echo "INFO: .env secrets already initialized; skipping placeholder substitution."
+else
+  echo "ERROR: .env is partially initialized. Expected either all secret placeholders or none."
   exit 1
 fi
-sed -i "s|REPLACE_WITH_SECURE_POSTGRES_PASSWORD|${PG_PASS}|g" .env
-sed -i "s|REPLACE_WITH_SECURE_REDIS_PASSWORD|${REDIS_PASS}|g" .env
-sed -i "s|REPLACE_WITH_64_CHAR_JWT_SECRET|${ENGINE_SECRET}|g" .env
-sed -i "s|REPLACE_WITH_32_CHAR_ENCRYPTION_KEY|${ENC_KEY}|g" .env
 
 # Set domain values
 sed -i "s|SUPERADMIN_DOMAIN=.*|SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
 sed -i "s|NEXT_PUBLIC_SUPERADMIN_DOMAIN=.*|NEXT_PUBLIC_SUPERADMIN_DOMAIN=meesho.agencyfic.com|" .env
-
-# Update DATABASE_URL and REDIS_URL to use the generated passwords
-# NOTE: docker-compose overrides these with service names (postgres, redis) in container networking
-# .env values are used for direct local access only
-sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://meesho:${PG_PASS}@localhost:15432/meesho_engine|" .env
-sed -i "s|REDIS_URL=.*|REDIS_URL=redis://:${REDIS_PASS}@localhost:16379|" .env
 
 echo ".env ready with auto-generated secrets ✓"
 
