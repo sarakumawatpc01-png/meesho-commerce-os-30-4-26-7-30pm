@@ -240,7 +240,7 @@ router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Res
       [req.admin.id]
     );
     if (row?.password == null) {
-      throw createError(401, 'Current password is incorrect');
+      throw createError(401, 'Current password is not set');
     }
     if (!(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');

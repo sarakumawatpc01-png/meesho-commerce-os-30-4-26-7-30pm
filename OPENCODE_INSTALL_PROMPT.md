@@ -112,6 +112,12 @@ ENC_KEY=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 # Substitute into .env (placeholders only)
 # Placeholders must match .env.example values
+for placeholder in REPLACE_WITH_SECURE_POSTGRES_PASSWORD REPLACE_WITH_SECURE_REDIS_PASSWORD \
+  REPLACE_WITH_64_CHAR_JWT_SECRET REPLACE_WITH_32_CHAR_ENCRYPTION_KEY; do
+  if ! grep -q "$placeholder" .env; then
+    echo "WARNING: Placeholder $placeholder not found in .env"
+  fi
+done
 sed -i "s|REPLACE_WITH_SECURE_POSTGRES_PASSWORD|${PG_PASS}|g" .env
 sed -i "s|REPLACE_WITH_SECURE_REDIS_PASSWORD|${REDIS_PASS}|g" .env
 sed -i "s|REPLACE_WITH_64_CHAR_JWT_SECRET|${ENGINE_SECRET}|g" .env
