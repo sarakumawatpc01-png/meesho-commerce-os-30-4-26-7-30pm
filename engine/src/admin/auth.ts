@@ -239,7 +239,10 @@ router.patch('/me', adminProfileLimiter, requireAdmin, async (req: any, res: Res
       `SELECT password FROM engine.admin_users WHERE id = $1`,
       [req.admin.id]
     );
-    if (!row?.password || !(await verifyPassword(currentPassword, row.password))) {
+    if (row?.password == null) {
+      throw createError(401, 'Current password is incorrect');
+    }
+    if (!(await verifyPassword(currentPassword, row.password))) {
       throw createError(401, 'Current password is incorrect');
     }
     passwordHash = await bcrypt.hash(newPassword, 12);
