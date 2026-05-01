@@ -46,13 +46,13 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
     logger.warn('Using default SUPER_ADMIN_PASSWORD; set SUPER_ADMIN_PASSWORD to override.');
   }
 
-  if (rawEmail && !rawPassword && rawEmail.toLowerCase() !== DEFAULT_EMAIL) {
+  if (rawEmail && !rawPassword && desiredEmail !== DEFAULT_EMAIL) {
     logger.warn('SUPER_ADMIN_EMAIL set without SUPER_ADMIN_PASSWORD; skipping env override.');
     return;
   }
 
   const existing = await queryOne<{ id: string; password: string }>(
-    `SELECT id, password FROM engine.admin_users WHERE email = $1`,
+    `SELECT id, password FROM engine.admin_users WHERE email = $1 AND role = 'super_admin'`,
     [desiredEmail]
   );
   if (existing) {
@@ -69,7 +69,7 @@ export async function ensureSuperAdminFromEnv(): Promise<void> {
 
   if (desiredEmail !== DEFAULT_EMAIL) {
     const legacyDefault = await queryOne<{ id: string; password: string }>(
-      `SELECT id, password FROM engine.admin_users WHERE email = $1`,
+      `SELECT id, password FROM engine.admin_users WHERE email = $1 AND role = 'super_admin'`,
       [DEFAULT_EMAIL]
     );
     if (legacyDefault) {
