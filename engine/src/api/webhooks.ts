@@ -2,15 +2,49 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { query, queryOne } from '../db/client';
 import { logger } from '../utils/logger';
-import { sendOrderConfirmation } from '../services/notifications/whatsapp';
-import { processRefund } from '../services/payments/refunds';
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+async function verifyRazorpaySignature(rawBody: string, signature: string): Promise<boolean> {
+  const sites = await query(
+    `SELECT schema_name FROM engine.sites WHERE status = 'active' AND razorpay_webhook_secret IS NOT NULL`
+  );
+
+  for (const site of sites) {
+    const schemaName = site.schema_name;
+    const secretRow = await queryOne(
+      `SELECT razorpay_webhook_secret FROM ${schemaName}.site_settings LIMIT 1`
+    );
+    const secret = secretRow?.razorpay_webhook_secret as string | undefined;
+    if (!secret) continue;
+
+    const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    if (timingSafeEqualHex(expected, signature)) return true;
+  }
+  return false;
+}
 
 const router = Router();
 
 // Razorpay webhook
 router.post('/razorpay', async (req: Request, res: Response) => {
   const signature = req.headers['x-razorpay-signature'] as string;
-  const body = JSON.stringify(req.body);
+  const rawBody = (req as any).rawBody as string | undefined;
+
+  if (!signature || !rawBody) {
+    return res.status(400).json({ error: 'Missing webhook signature/body' });
+  }
+
+  const isValid = await verifyRazorpaySignature(rawBody, signature);
+  if (!isValid) {
+    logger.warn('Razorpay webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
 
   // We need to find the site to get the webhook secret
   // Razorpay sends a unique signature per account

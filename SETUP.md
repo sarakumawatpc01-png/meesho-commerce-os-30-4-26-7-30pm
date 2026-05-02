@@ -188,7 +188,7 @@ Jobs run automatically after deployment:
 2. Complete KYC (required for live payments)
 3. Get Key ID and Key Secret from Settings → API Keys
 4. Add Webhook Secret: Dashboard → Webhooks → Add Webhook
-   - URL: `https://yourdomain.com/api/webhooks/razorpay`
+   - URL: `https://yourdomain.com/webhooks/razorpay`
    - Events: `payment.captured`, `payment.failed`, `refund.processed`
 5. Add to Admin → Settings → [Your Site] → Payments
 

@@ -84,8 +84,8 @@ router.post('/:siteSlug/deploy', requireSiteAccess, async (req: Request, res: Re
   const versionDir = path.join(SITES_DIR, site.slug, `v${version}`);
   fs.mkdirSync(versionDir, { recursive: true });
 
-  // Extract all files to version dir
-  zip.extractAllTo(versionDir, true);
+  // Extract all files to version dir (path traversal safe)
+  safeExtractZipToDir(zip, versionDir);
   fs.writeFileSync(path.join(versionDir, 'index.html'), html);
 
   // Make this version active by symlinking
@@ -152,6 +152,25 @@ ${site.hotjar_id ? `<script>(function(h,o,t,j,a,r){h.hj=h.hj||function(){(h.hj.q
 `;
 
   return html.replace('</head>', config + '</head>');
+}
+
+function safeExtractZipToDir(zip: AdmZip, destDir: string) {
+  const normalizedDest = path.resolve(destDir);
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue;
+    const entryName = entry.entryName.replace(/\\/g, '/');
+    if (entryName.startsWith('/') || entryName.includes('..')) {
+      continue;
+    }
+
+    const outPath = path.resolve(normalizedDest, entryName);
+    if (!outPath.startsWith(normalizedDest + path.sep)) {
+      continue;
+    }
+
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, entry.getData());
+  }
 }
 
 export default router;
