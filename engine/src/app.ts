@@ -91,7 +91,7 @@ app.use(securityMiddleware);
 
 // Body parsing
 // Note: webhooks need the raw body for signature verification.
-app.use((req, _res, next) => {
+app.use('/webhooks', (req, _res, next) => {
   let data = '';
   req.setEncoding('utf8');
   req.on('data', (chunk) => {
