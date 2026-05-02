@@ -34,3 +34,21 @@ docker compose up -d --build
 
 See `SETUP.md`.
 
+## Production checklist
+
+- **Secrets & env**: ensure `.env` is present on the server and never committed.
+  - Set `ENGINE_SECRET`, `JWT_SECRET`, `ENCRYPTION_KEY` (generate strong random values).
+  - Set third-party credentials (`RAZORPAY_*`, `WABA_*`, `RESEND_API_KEY`, `SMTP_*`, etc.).
+- **Webhooks**:
+  - Razorpay webhook must be configured to `https://<your-domain>/webhooks/razorpay`.
+  - Razorpay webhook signatures are verified against the per-site webhook secret; invalid signatures are rejected.
+- **Backups**:
+  - Schedule automated Postgres backups (e.g. nightly `pg_dump`) and store them off-host.
+  - Verify restore procedures periodically.
+- **Logging & monitoring**:
+  - Set `SENTRY_DSN` (optional but recommended) for engine error reporting.
+  - Use `docker compose logs -f engine` for runtime diagnostics.
+  - Monitor disk usage for Docker volumes and `SITES_DIR` deployments.
+- **Networking & TLS**:
+  - Put Nginx in front and enable HTTPS (Let’s Encrypt/Certbot).
+  - Confirm rate limiting is enabled in `nginx/nginx.conf`.
