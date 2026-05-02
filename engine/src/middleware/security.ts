@@ -57,20 +57,3 @@ export const securityMiddleware = (req: Request, res: Response, next: NextFuncti
 
   next();
 };
-
-// Error handler
-export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
-  const status = err.status || err.statusCode || 500;
-  const message = status < 500 ? err.message : 'Internal server error';
-
-  if (status >= 500) {
-    require('../utils/logger').logger.error('Unhandled error', {
-      error: err.message,
-      stack: err.stack,
-      path: req.path,
-      method: req.method,
-    });
-  }
-
-  res.status(status).json({ error: message });
-}

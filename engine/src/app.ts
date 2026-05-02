@@ -90,6 +90,18 @@ app.use(corsMiddleware);
 app.use(securityMiddleware);
 
 // Body parsing
+// Note: webhooks need the raw body for signature verification.
+app.use((req, _res, next) => {
+  let data = '';
+  req.setEncoding('utf8');
+  req.on('data', (chunk) => {
+    data += chunk;
+  });
+  req.on('end', () => {
+    (req as any).rawBody = data;
+    next();
+  });
+});
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
